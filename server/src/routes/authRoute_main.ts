@@ -25,10 +25,10 @@ const signinSchema = z.object({
 router.post("/signup",async (req:express.Request,res:express.Response)=>{
     try{
         const parsed = signupSchema.safeParse(req.body);
-        if(!parsed.success) return res.json(400).json({error:parsed.error.issues});
+        if(!parsed.success) return res.status(400).json({error:parsed.error.issues});
 
         const existingUser = await User.findOne({email:parsed.data.email})
-        if(existingUser) return res.json(400).json({message:"user already exist"});
+        if(existingUser) return res.status(400).json({message:"user already exist"});
 
         const hashedPassword = await bcrypt.hash(parsed.data.password,10);
         const user = new User({
@@ -50,13 +50,13 @@ router.post("/signup",async (req:express.Request,res:express.Response)=>{
 router.post("/signin",async (req:express.Request,res:express.Response)=>{
     try{
         const parsed = signinSchema.safeParse(req.body);
-        if(!parsed.success) return res.json(400).json({error:parsed.error.issues});
+        if(!parsed.success) return res.status(400).json({error:parsed.error.issues});
 
         const user = await User.findOne({email:parsed.data.email});
-        if(!user) return res.json(400).json({message:"user not found"});
+        if(!user) return res.status(400).json({message:"user not found"});
 
         const valid = await bcrypt.compare(parsed.data.password,user.password);
-        if(!valid) return res.json(400).json({message:"password invalid"});
+        if(!valid) return res.status(400).json({message:"password invalid"});
 
         const accessToken = jwt.sign({id:user._id,email:user.email},process.env.ACCESS_TOKEN_SECRET!)
         const refreshToken = jwt.sign({id:user._id,email:user.email},process.env.REFRESH_TOKEN_SECRET!)
@@ -79,7 +79,7 @@ router.post("/refresh",async (req:express.Request,res:express.Response)=>{
         const refreshToken = req.body.refreshToken;
         if(!refreshToken) return res.status(401).json({message:'refresh token is required'});
 
-        const token = await RefreshToken.findOne(refreshToken);
+        const token = await RefreshToken.findOne({token: refreshToken});
         if(!token) return res.status(403).json({message:"invalid token"})
 
         const payload = jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET!) as {id:string;email:string}
