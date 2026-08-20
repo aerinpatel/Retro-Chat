@@ -58,33 +58,34 @@ router.post("/signin",async (req:express.Request,res:express.Response)=>{
         const valid = await bcrypt.compare(parsed.data.password,user.password);
         if(!valid) return res.status(400).json({message:"password invalid"});
 
-        const accessToken = jwt.sign({id:user._id,email:user.email},process.env.ACCESS_TOKEN_SECRET!)
-        const refreshToken = jwt.sign({id:user._id,email:user.email},process.env.REFRESH_TOKEN_SECRET!)
+        const accessToken = jwt.sign({ id: user._id, userId: user._id, email: user.email }, process.env.ACCESS_TOKEN_SECRET!);
+        const refreshToken = jwt.sign({ id: user._id, userId: user._id, email: user.email }, process.env.REFRESH_TOKEN_SECRET!);
 
         const token = new RefreshToken({
-            token:refreshToken,
-            userId:user._id,
+            token: refreshToken,
+            userId: user._id,
         });
         await token.save();
-        return res.status(200).json({accessToken,refreshToken});
+        return res.status(200).json({ accessToken, refreshToken });
     }
-    catch(err){
-        console.error("error in signin:",err);
-        return res.status(500).json({message:"Internal server error"})
+    catch (err) {
+        console.error("error in signin:", err);
+        return res.status(500).json({ message: "Internal server error" });
     }
 })
 
-router.post("/refresh",async (req:express.Request,res:express.Response)=>{
-    try{
+router.post("/refresh", async (req: express.Request, res: express.Response) => {
+    try {
         const refreshToken = req.body.refreshToken;
-        if(!refreshToken) return res.status(401).json({message:'refresh token is required'});
+        if (!refreshToken) return res.status(401).json({ message: 'refresh token is required' });
 
-        const token = await RefreshToken.findOne({token: refreshToken});
-        if(!token) return res.status(403).json({message:"invalid token"})
+        const token = await RefreshToken.findOne({ token: refreshToken });
+        if (!token) return res.status(403).json({ message: "invalid token" });
 
-        const payload = jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET!) as {id:string;email:string}
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { id?: string; userId?: string; email: string };
+        const userId = payload.id || payload.userId;
 
-        const newAccessToken = jwt.sign({id:payload.id,email:payload.email},process.env.ACCESS_TOKEN_SECRET!,{expiresIn:"15m"})
+        const newAccessToken = jwt.sign({ id: userId, userId: userId, email: payload.email }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: "15m" });
         // const newRefreshToken = jwt.sign({id:payload.id,email:payload.email},process.env.REFRESH_TOKEN_SECRET!,{expiresIn:"7d"})
 
         // const newToken = new RefreshToken({
